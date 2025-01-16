@@ -1,21 +1,22 @@
-name: Remote Control Setup
+name: Remote Access with Tmate
 
 on:
   workflow_dispatch:
 
 jobs:
-  setup-macos:
+  tmate-session:
     runs-on: macos-latest
 
     steps:
-    - name: Setup SSH Server
+    - name: Install Tmate
       run: |
-        echo "Installing and starting SSH..."
-        sudo systemsetup -setremotelogin on
-        echo "GitHub Action running on macOS"
-        whoami
-
-    - name: Retrieve IP Address
+        brew install tmate
+    - name: Start Tmate Session
       run: |
-        echo "The public IP address is:"
-        curl ifconfig.me
+        tmate -S /tmp/tmate.sock new-session -d
+        tmate -S /tmp/tmate.sock wait tmate-ready
+        echo "Tmate session is ready. Use the following SSH to connect:"
+        tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}'
+        tmate -S /tmp/tmate.sock display -p '#{tmate_web}'
+    - name: Wait for Manual Connection
+      run: sleep 1h
