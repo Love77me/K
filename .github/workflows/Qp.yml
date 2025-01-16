@@ -1,4 +1,4 @@
-name: Debugging Workflow with Tmate
+name: Remote Access with Tmate
 
 on:
   workflow_dispatch:
@@ -16,13 +16,17 @@ jobs:
 
     - name: Install Tmate
       run: |
-        brew install tmate || echo "Failed to install Tmate."
+        brew update
+        brew install tmate || echo "Tmate installation failed. Check Homebrew."
 
     - name: Start Tmate Session
       run: |
-        tmate -S /tmp/tmate.sock new-session -d
-        tmate -S /tmp/tmate.sock wait tmate-ready
-        tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}'
-        tmate -S /tmp/tmate.sock display -p '#{tmate_web}'
-    - name: Keep Session Alive
+        tmate -S /tmp/tmate.sock new-session -d || echo "Failed to start Tmate session."
+        tmate -S /tmp/tmate.sock wait tmate-ready || echo "Tmate session not ready."
+        echo "SSH session:"
+        tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}' || echo "SSH not available."
+        echo "Web session:"
+        tmate -S /tmp/tmate.sock display -p '#{tmate_web}' || echo "Web session not available."
+
+    - name: Wait for Manual Connection
       run: sleep 1h
