@@ -1,0 +1,11 @@
+name: Ali
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Start Building...
+    runs-on: mac-latest
+    timeout-minutes: 360
+    
