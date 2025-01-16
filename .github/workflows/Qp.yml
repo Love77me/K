@@ -1,4 +1,4 @@
-name: Remote Access with Tmate
+name: Debugging Workflow with Tmate
 
 on:
   workflow_dispatch:
@@ -8,15 +8,21 @@ jobs:
     runs-on: macos-latest
 
     steps:
+    - name: Setup Environment
+      run: |
+        echo "Starting debug session..."
+        whoami
+        uname -a
+
     - name: Install Tmate
       run: |
-        brew install tmate
+        brew install tmate || echo "Failed to install Tmate."
+
     - name: Start Tmate Session
       run: |
         tmate -S /tmp/tmate.sock new-session -d
         tmate -S /tmp/tmate.sock wait tmate-ready
-        echo "Tmate session is ready. Use the following SSH to connect:"
         tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}'
         tmate -S /tmp/tmate.sock display -p '#{tmate_web}'
-    - name: Wait for Manual Connection
+    - name: Keep Session Alive
       run: sleep 1h
