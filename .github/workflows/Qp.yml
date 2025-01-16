@@ -29,4 +29,4 @@ jobs:
         tmate -S /tmp/tmate.sock display -p '#{tmate_web}' || echo "Web session not available."
 
     - name: Wait for Manual Connection
-      run: sleep 1h
+      run: sleep 3600
