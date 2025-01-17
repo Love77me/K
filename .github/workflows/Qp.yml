@@ -1,4 +1,4 @@
-name: Remote Access via VNC with Cloudflare Tunnel
+name: Remote Access via VNC (Screen Sharing on macOS)
 
 on:
   workflow_dispatch:
@@ -8,40 +8,44 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      # تحديث Homebrew وتثبيت TigerVNC Server
-      - name: Install VNC Server
+      # تمكين الوصول إلى الشاشة (Screen Sharing)
+      - name: Enable Screen Sharing
         run: |
-          brew update
-          brew install tigervnc # تثبيت TigerVNC Server
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate \
+            -configure \
+            -access \
+            -on \
+            -users "runner" \
+            -privs -all
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -restart \
+            -agent
 
-      # إعداد خادم العرض الافتراضي
-      - name: Start Virtual Display
+      # ضبط كلمة مرور VNC
+      - name: Set VNC Password
         run: |
-          brew install xquartz # تثبيت Xvfb إذا لم يكن مثبتًا
-          Xvfb :1 -screen 0 1024x768x16 &
-          export DISPLAY=:1
+          echo "your_vnc_password" | perl -we 'chomp($p=<>); print $p."\0"' > /tmp/vncpass
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -configure \
+            -clientopts \
+            -setvnclegacy -vnclegacy yes
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -configure \
+            -clientopts \
+            -setvncpw -vncpw "$(cat /tmp/vncpass)"
 
-      # تشغيل خادم VNC
-      - name: Start VNC Server
-        run: |
-          vncserver :1 -geometry 1024x768 -SecurityTypes None
-          echo "VNC Server is running on port 5901"
-
-      # تثبيت Cloudflare Tunnel
-      - name: Install Cloudflare Tunnel
+      # تشغيل Cloudflare Tunnel للوصول عبر الإنترنت
+      - name: Start Cloudflare Tunnel
         run: |
           curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz -o cloudflared.tgz
           tar -xvzf cloudflared.tgz
           sudo mv cloudflared /usr/local/bin/cloudflared
-
-      # تشغيل Cloudflare Tunnel
-      - name: Start Cloudflare Tunnel
-        run: |
-          cloudflared tunnel --url vnc://localhost:5901 > /dev/null &
+          cloudflared tunnel --url vnc://localhost:5900 > /dev/null &
           sleep 5
           echo "Cloudflare Tunnel URL:"
           cloudflared tunnel list
 
-      # إبقاء الخادم قيد التشغيل
+      # إبقاء الخدمة نشطة
       - name: Keep Server Running
         run: sleep 3600
