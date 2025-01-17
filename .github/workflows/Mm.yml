@@ -1,0 +1,51 @@
+name: Remote Access via VNC (Screen Sharing on macOS)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  remote-access:
+    runs-on: macos-latest
+
+    steps:
+      # تمكين الوصول إلى الشاشة (Screen Sharing)
+      - name: Enable Screen Sharing
+        run: |
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -activate \
+            -configure \
+            -access \
+            -on \
+            -users "runner" \
+            -privs -all
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -restart \
+            -agent
+
+      # ضبط كلمة مرور VNC
+      - name: Set VNC Password
+        run: |
+          echo "your_vnc_password" | perl -we 'chomp($p=<>); print $p."\0"' > /tmp/vncpass
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -configure \
+            -clientopts \
+            -setvnclegacy -vnclegacy yes
+          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
+            -configure \
+            -clientopts \
+            -setvncpw -vncpw "$(cat /tmp/vncpass)"
+
+      # تشغيل Cloudflare Tunnel للوصول عبر الإنترنت
+      - name: Start Cloudflare Tunnel
+        run: |
+          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz -o cloudflared.tgz
+          tar -xvzf cloudflared.tgz
+          sudo mv cloudflared /usr/local/bin/cloudflared
+          cloudflared tunnel --url vnc://localhost:5900 > /dev/null &
+          sleep 5
+          echo "Cloudflare Tunnel URL:"
+          cloudflared tunnel list
+
+      # إبقاء الخدمة نشطة
+      - name: Keep Server Running
+        run: sleep 3600
