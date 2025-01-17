@@ -8,11 +8,11 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      # تثبيت الأدوات
+      # تثبيت الأدوات المطلوبة
       - name: Install Required Tools
         run: |
           brew update
-          brew install tigervnc
+          brew install --cask tigervnc-viewer
           brew install xquartz
 
       # إعداد خادم العرض الافتراضي
