@@ -1,51 +1,55 @@
-name: Remote Access via VNC (Screen Sharing on macOS)
+name: Capture Screenshot and Upload to GoFile.io
 
 on:
   workflow_dispatch:
 
 jobs:
   remote-access:
-    runs-on: macos-latest
+    runs-on: windows-latest
 
     steps:
-      # تمكين الوصول إلى الشاشة (Screen Sharing)
-      - name: Enable Screen Sharing
-        run: |
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-            -activate \
-            -configure \
-            -access \
-            -on \
-            -users "runner" \
-            -privs -all
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-            -restart \
-            -agent
+      # 1. تثبيت Python
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
 
-      # ضبط كلمة مرور VNC
-      - name: Set VNC Password
+      # 2. تثبيت المكتبات المطلوبة
+      - name: Install Required Libraries
         run: |
-          echo "your_vnc_password" | perl -we 'chomp($p=<>); print $p."\0"' > /tmp/vncpass
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-            -configure \
-            -clientopts \
-            -setvnclegacy -vnclegacy yes
-          sudo /System/Library/CoreServices/RemoteManagement/ARDAgent.app/Contents/Resources/kickstart \
-            -configure \
-            -clientopts \
-            -setvncpw -vncpw "$(cat /tmp/vncpass)"
+          pip install requests pillow
 
-      # تشغيل Cloudflare Tunnel للوصول عبر الإنترنت
-      - name: Start Cloudflare Tunnel
+      # 3. التقاط لقطة شاشة ورفعها إلى GoFile.io
+      - name: Capture Screenshot and Upload
         run: |
-          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz -o cloudflared.tgz
-          tar -xvzf cloudflared.tgz
-          sudo mv cloudflared /usr/local/bin/cloudflared
-          cloudflared tunnel --url vnc://localhost:5900 > /dev/null &
-          sleep 5
-          echo "Cloudflare Tunnel URL:"
-          cloudflared tunnel list
+          echo "Capturing screenshot and uploading to GoFile.io..."
 
-      # إبقاء الخدمة نشطة
-      - name: Keep Server Running
-        run: sleep 3600
+          python - <<EOF
+import requests
+from PIL import ImageGrab
+
+# Capture screenshot
+screenshot = ImageGrab.grab()
+screenshot.save("screenshot.png")
+
+# Upload screenshot to GoFile.io
+with open("screenshot.png", "rb") as file:
+    response = requests.post(
+        'https://api.gofile.io/uploadFile',
+        files={'file': ('screenshot.png', file)}
+    )
+
+# Parse the response and print the download link
+data = response.json()
+if data['status'] == 'ok':
+    print("Screenshot uploaded to GoFile.io")
+    print("Download Link:", data['data']['downloadPage'])
+else:
+    print("Failed to upload to GoFile.io:", data)
+EOF
+
+      # 4. إبقاء الخادم قيد التشغيل
+      - name: Keep the Server Running
+        run: |
+          echo "Server is active. Screenshot has been uploaded to GoFile.io."
+          timeout /t 3600
