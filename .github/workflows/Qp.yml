@@ -1,32 +1,47 @@
-name: Remote Access with Tmate
+name: Remote Access via VNC with Cloudflare Tunnel
 
 on:
   workflow_dispatch:
 
 jobs:
-  tmate-session:
+  remote-access:
     runs-on: macos-latest
 
     steps:
-    - name: Setup Environment
-      run: |
-        echo "Starting debug session..."
-        whoami
-        uname -a
+      # تثبيت الأدوات
+      - name: Install Required Tools
+        run: |
+          brew update
+          brew install tigervnc
+          brew install xquartz
 
-    - name: Install Tmate
-      run: |
-        brew update
-        brew install tmate || echo "Tmate installation failed. Check Homebrew."
+      # إعداد خادم العرض الافتراضي
+      - name: Start Virtual Display
+        run: |
+          Xvfb :1 -screen 0 1024x768x16 &
+          export DISPLAY=:1
 
-    - name: Start Tmate Session
-      run: |
-        tmate -S /tmp/tmate.sock new-session -d || echo "Failed to start Tmate session."
-        tmate -S /tmp/tmate.sock wait tmate-ready || echo "Tmate session not ready."
-        echo "SSH session:"
-        tmate -S /tmp/tmate.sock display -p '#{tmate_ssh}' || echo "SSH not available."
-        echo "Web session:"
-        tmate -S /tmp/tmate.sock display -p '#{tmate_web}' || echo "Web session not available."
+      # تشغيل خادم VNC
+      - name: Start VNC Server
+        run: |
+          vncserver :1 -geometry 1024x768 -SecurityTypes None
+          echo "VNC Server is running on port 5901"
 
-    - name: Wait for Manual Connection
-      run: sleep 3600
+      # تثبيت Cloudflare Tunnel
+      - name: Install Cloudflare Tunnel
+        run: |
+          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-darwin-amd64.tgz -o cloudflared.tgz
+          tar -xvzf cloudflared.tgz
+          sudo mv cloudflared /usr/local/bin/cloudflared
+
+      # تشغيل Cloudflare Tunnel
+      - name: Start Cloudflare Tunnel
+        run: |
+          cloudflared tunnel --url vnc://localhost:5901 > /dev/null &
+          sleep 5
+          echo "Cloudflare Tunnel URL:"
+          cloudflared tunnel list
+          
+      # إبقاء الخادم قيد التشغيل
+      - name: Keep Server Running
+        run: sleep 3600
