@@ -8,16 +8,16 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      # تثبيت الأدوات المطلوبة
-      - name: Install Required Tools
+      # تحديث Homebrew وتثبيت TigerVNC Server
+      - name: Install VNC Server
         run: |
           brew update
-          brew install --cask tigervnc-viewer
-          brew install xquartz
+          brew install tigervnc # تثبيت TigerVNC Server
 
       # إعداد خادم العرض الافتراضي
       - name: Start Virtual Display
         run: |
+          brew install xquartz # تثبيت Xvfb إذا لم يكن مثبتًا
           Xvfb :1 -screen 0 1024x768x16 &
           export DISPLAY=:1
 
@@ -41,7 +41,7 @@ jobs:
           sleep 5
           echo "Cloudflare Tunnel URL:"
           cloudflared tunnel list
-          
+
       # إبقاء الخادم قيد التشغيل
       - name: Keep Server Running
         run: sleep 3600
